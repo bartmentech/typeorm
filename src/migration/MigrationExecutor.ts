@@ -34,6 +34,7 @@ export class MigrationExecutor {
 
     private readonly migrationsTable: string;
     private readonly migrationsTableName: string;
+    private readonly options: SqlServerConnectionOptions|PostgresConnectionOptions;
 
     // -------------------------------------------------------------------------
     // Constructor
@@ -42,9 +43,10 @@ export class MigrationExecutor {
     constructor(protected connection: Connection,
                 protected queryRunner?: QueryRunner) {
 
-        const options = <SqlServerConnectionOptions|PostgresConnectionOptions>this.connection.driver.options;
+        this.options = <SqlServerConnectionOptions|PostgresConnectionOptions>this.connection.driver.options;
         this.migrationsTableName = connection.options.migrationsTableName || "migrations";
-        this.migrationsTable = this.connection.driver.buildTableName(this.migrationsTableName, options.schema, options.database);
+        this.migrationsTable = this.connection.driver.buildTableName(
+            this.migrationsTableName, this.options.schema, this.options.database);
     }
 
     // -------------------------------------------------------------------------
@@ -56,6 +58,9 @@ export class MigrationExecutor {
      */
     public async executeMigration(migration: Migration): Promise<Migration> {
         return this.withQueryRunner(async (queryRunner) => {
+            if (this.options.createSchema) {
+                await this.createSchemaIfNotExist(queryRunner);
+            }
             await this.createMigrationsTableIfNotExist(queryRunner);
             await (migration.instance as any).up(queryRunner);
             await this.insertExecutedMigration(queryRunner, migration);
@@ -164,6 +169,10 @@ export class MigrationExecutor {
     async executePendingMigrations(): Promise<Migration[]> {
 
         const queryRunner = this.queryRunner || this.connection.createQueryRunner("master");
+        // create given schema if its not created yet
+        if (this.options.createSchema) {
+            await this.createSchemaIfNotExist(queryRunner);
+        }
         // create migrations table if its not created yet
         await this.createMigrationsTableIfNotExist(queryRunner);
         // get all migrations that are executed and saved in the database
@@ -333,6 +342,12 @@ export class MigrationExecutor {
     // -------------------------------------------------------------------------
     // Protected Methods
     // -------------------------------------------------------------------------
+
+    protected async createSchemaIfNotExist(queryRunner: QueryRunner): Promise<void> {
+        if (this.options.schema) {
+            await queryRunner.createSchema(this.options.schema, true);
+        }
+    }
 
     /**
      * Creates table "migrations" that will store information about executed migrations.

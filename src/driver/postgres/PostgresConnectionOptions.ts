@@ -17,6 +17,11 @@ export interface PostgresConnectionOptions extends BaseConnectionOptions, Postgr
     readonly schema?: string;
 
     /**
+     * Indicate if the given schema should be automatically created or not.
+     */
+    readonly createSchema?: boolean;
+
+    /**
      * Replication setup.
      */
     readonly replication?: {

@@ -34,6 +34,11 @@ export interface SqlServerConnectionOptions extends BaseConnectionOptions, SqlSe
     readonly schema?: string;
 
     /**
+     * Indicate if the given schema should be automatically created or not.
+     */
+    readonly createSchema?: boolean;
+
+    /**
      * An optional object/dictionary with the any of the properties
      */
     readonly pool?: {
